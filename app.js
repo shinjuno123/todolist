@@ -1,25 +1,20 @@
+"use strict";
 const express = require("express");
 const bodyParser = require("body-parser");
+const date = require(__dirname + "/date.js");
+
 
 const app = express();
 const port = 8080;
-let items = [];
-let workItems = [];
+const items = [];
+const workItems = [];
 
 app.set("view engine", "ejs");
 app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.get("/", function (req, res) {
-  const today = new Date();
-  const options = {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  };
-
-  const day = today.toLocaleDateString("en-US", options);
-
+  const day = date.getDate();
   res.render("list", { listTitle: day, items: items });
 });
 
@@ -38,7 +33,7 @@ app.get("/work", function (req, res) {
   res.render("list", { listTitle: "Work List", items: workItems });
 });
 
-app.get("/about",function(req, res){
+app.get("/about", function (req, res) {
   res.render("about");
 });
 
