@@ -2,6 +2,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const date = require(__dirname + "/date.js");
+const _ = require("lodash");
 const mongoose = require("mongoose");
 
 
@@ -38,34 +39,91 @@ const item3 = new Item({
 
 const defaultItems = [item1,item2,item3]
 
-Item.insertMany(defaultItems, function(err){
-  if (err){
-    console.log(err);
-  }else{
-    console.log("Succeeded to insert 3 default items");
-  }
-});
+const listSchema = {
+  name : String,
+  items : [itemsSchema]
+}
+
+const List = mongoose.model("List", listSchema);
+
+
 
 
 app.get("/", function (req, res) {
   const day = date.getDate();
-  res.render("list", { listTitle: day, items: items });
+  Item.find({}, function(err, items){
+    if(items.length === 0){
+      Item.insertMany(defaultItems, function(err){
+        if (err){
+          console.log(err);
+        }else{
+          console.log("Succeeded to insert 3 default items to DB");
+        }
+      });
+      res.redirect('/');
+    }else{
+      res.render("list", { listTitle: day, items: items });
+    }
+  });
 });
 
-app.post("/", function (req, res) {
-  const item = req.body.newItem;
-  if (req.body.list == "Work List") {
-    workItems.push(item);
-    res.redirect("/work");
-  } else {
-    items.push(item);
-    res.redirect("/");
+app.post("/", async function (req, res) {
+  const listName = req.body.listTitle;
+  const itemName = req.body.newItem;
+
+  const item = new Item({
+    name : itemName
+  });
+
+  if (listName === date.getDate()){
+    item.save();
+    res.redirect('/');
+  }else{
+    const listDoc = await List.findOne({name:listName}).exec();
+    listDoc.items.push(item);
+    await listDoc.save();
+    res.redirect(`/${listName}`);
   }
+
 });
 
-app.get("/work", function (req, res) {
-  res.render("list", { listTitle: "Work List", items: workItems });
+app.post('/delete', async function(req, res){
+  const checkedItemId = req.body.checkbox;
+  const listName = req.body.listName;
+
+  if (listName === date.getDate()){
+    const deleteRes = await Item.deleteOne({_id:checkedItemId});
+    if (deleteRes.deletedCount){
+      console.log(`Successfully deleted one item! id : ${checkedItemId}`);
+    }
+    res.redirect('/');
+  }else{
+    await List.findOneAndUpdate({name: listName},{ $pull : { items : {_id : checkedItemId } } });
+
+    res.redirect(`/${listName}`);
+  }
+
+
 });
+
+app.get("/:customListName", async function(req, res){
+  const customTitleName = _.capitalize(req.params.customListName);
+
+  const isName = await List.findOne({name:customTitleName}).exec();
+  if (!isName) {
+    const list = new List({
+      name : customTitleName,
+      items : defaultItems
+    });
+    list.save();
+    res.redirect(`/${customTitleName}`)
+  }else{
+
+    res.render('list',{listTitle: customTitleName, items : isName.items})
+  }
+
+})
+
 
 app.get("/about", function (req, res) {
   res.render("about");
