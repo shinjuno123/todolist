@@ -1,6 +1,6 @@
 # :pushpin: Todo List
 
-## :pushpin: Technique Stack
+## :pushpin: Technical Stack
 
 - HTML
 - CSS
